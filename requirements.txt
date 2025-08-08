@@ -1,0 +1,20 @@
+fastapi
+uvicorn
+pydantic
+pandas
+langchain
+langchain-community
+langchain-huggingface
+faiss-cpu
+sentence-transformers
+langchain-ollama
+pyarrow 
+fastparquet  
+openpyxl
+python-dateutil
+pytest
+pytest-asyncio 
+httpx
+aiohttp
+psutil
+# npm install --save-dev cross-env
