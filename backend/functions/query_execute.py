@@ -7,8 +7,16 @@ from pydantic import BaseModel
 from Database.database import initialize_data_source, query_consumption_data
 import pandas as pd
 from datetime import datetime
-from functions.operations import perform_operation
+# from functions.operations import perform_operation
 from typing import Optional
+
+from functions.enhanced_operations import (
+    detect_multiple_operations, 
+    perform_multiple_operations, 
+    generate_response_without_llm
+)
+
+
 available_families, df_data = initialize_data_source()
 
 
@@ -26,14 +34,12 @@ llm = initialize_llm_model()
 async def query_exact(q: Question,USE_DATABASE, AGGREGATION_STRATEGY):
     start_time = time.time()
     q_text: str = q.question or ""
-    mode = (q.mode or AGGREGATION_STRATEGY or "hybrid").lower()
     debug_info: dict = {}
 
     print("\nQUERY START:", q_text)
     
     # Parse dates & family
     start_date, end_date, date_type = parse_date_range_from_text(q_text)
-
     famille = detect_famille_in_text(q_text)
     
     debug_info['normalized_question'] = normalize_text(q_text)
@@ -42,6 +48,7 @@ async def query_exact(q: Question,USE_DATABASE, AGGREGATION_STRATEGY):
     debug_info['date_type'] = date_type
     debug_info['detected_family'] = famille
 
+    # Early validation
     if not start_date or not end_date:
         execution_time = round(time.time() - start_time, 2)
         return {
@@ -53,18 +60,18 @@ async def query_exact(q: Question,USE_DATABASE, AGGREGATION_STRATEGY):
     if not famille:
         execution_time = round(time.time() - start_time, 2)
         return {
-            "response": "Famille non trouvée. Familles disponibles: " + ", ".join(available_families[:5]) + "...",
+            "response": "Famille non trouvée. Formats acceptés: MAIS, electricité, gaz, eau, etc.",
             "debug": debug_info,
-            "available_families_sample": available_families[:15],
             "execution_time": f"{execution_time} secondes"
         }
 
-    # OPTIMIZED: Query data using fast database approach
+    # Query data
     query_start = time.time()
-    data_result = query_consumption_data(start_date=start_date, end_date=end_date, famille=famille, USE_DATABASE=USE_DATABASE)
+    data_result = query_consumption_data(start_date, end_date, famille, USE_DATABASE)
     query_time = round((time.time() - query_start) * 1000, 2)
     print(f"Database query took: {query_time}ms")
 
+    # Process data based on source
     if USE_DATABASE:
         aggregates = data_result['aggregates']
         rows_preview = data_result['sample_rows']
@@ -109,65 +116,21 @@ async def query_exact(q: Question,USE_DATABASE, AGGREGATION_STRATEGY):
                         'entries': int(row['count'])
                     }
 
-    # Detect requested operation
-    operation = detect_math_operation(q_text)
-    op_result, op_explanation = perform_operation(aggregates, operation)
-
-    # Build simplified prompt (less verbose)
-    llm_start = time.time()
-    response_text = ""
+    # Detect operations (enhanced to handle multiple operations)
+    operations_info = detect_multiple_operations(q_text)
+    operations_result = perform_multiple_operations(aggregates, operations_info)
     
-    if llm is not None:
-        try:
-            # Simplified prompt to reduce LLM processing time
-            if date_type == 'single':
-                prompt = f"Consommation de {famille} le {start_date.strftime('%d/%m/%Y')}: {aggregates['sum']:.2f} unités ({aggregates['count']} entrées). Question: {q_text}. Réponds brièvement."
-            else:
-                prompt = f"Consommation de {famille} du {start_date.strftime('%d/%m/%Y')} au {end_date.strftime('%d/%m/%Y')}: {aggregates['sum']:.2f} unités ({aggregates['count']} entrées). Question: {q_text}. Réponds brièvement."
-            
-            if op_result is not None:
-                prompt += f" Opération: {op_explanation}"
-            
-            response_text = llm.invoke(prompt).strip()
-            llm_time = round((time.time() - llm_start) * 1000, 2)
-            print(f"LLM processing took: {llm_time}ms")
-        except Exception as e:
-            print("LLM invoke error:", e)
-            response_text = ""
+    print(f"Detected operations: {operations_info}")
+    print(f"Operations result: {operations_result}")
 
-    # Fast fallback if LLM fails
-    if not response_text or len(response_text.strip()) < 10:
-        if date_type == 'single':
-            date_str = start_date.strftime("%d/%m/%Y")
-            if aggregates['count'] > 0:
-                response_text = f"La consommation de {famille} le {date_str} est de {aggregates['sum']:.2f} unités"
-                if aggregates['count'] > 1:
-                    response_text += f" (sur {aggregates['count']} entrées)"
-                response_text += "."
-                
-                if op_result is not None:
-                    response_text += f" {op_explanation} = {op_result:.2f} unités."
-            else:
-                response_text = f"Aucune consommation de {famille} trouvée pour le {date_str}."
-        else:
-            start_str = start_date.strftime("%d/%m/%Y")
-            end_str = end_date.strftime("%d/%m/%Y")
-            if aggregates['count'] > 0:
-                response_text = f"La consommation totale de {famille} du {start_str} au {end_str} est de {aggregates['sum']:.2f} unités ({aggregates['count']} entrées)."
-                
-                if daily_breakdown and len(daily_breakdown) <= 10:  # Only show daily breakdown for reasonable ranges
-                    response_text += "\n\nDétail par jour:"
-                    for date_str, data in sorted(daily_breakdown.items(), key=lambda x: datetime.strptime(x[0], '%d/%m/%Y')):
-                        entries_text = f" ({data['entries']} entrées)" if data['entries'] > 1 else ""
-                        response_text += f"\n- {date_str}: {data['total']:.2f} unités{entries_text}"
-                
-                if op_result is not None:
-                    response_text += f"\n\n{op_explanation} = {op_result:.2f} unités."
-            else:
-                response_text = f"Aucune consommation de {famille} trouvée entre le {start_str} et le {end_str}."
+    # Generate response without LLM
+    response_text = generate_response_without_llm(
+        famille, start_date, end_date, date_type, 
+        aggregates, daily_breakdown, operations_result
+    )
 
     execution_time = round(time.time() - start_time, 2)
-    print(f"TOTAL EXECUTION TIME: {execution_time} seconds")
+    print(f"TOTAL EXECUTION TIME: {execution_time} seconds (NO LLM)")
 
     return {
         "computed": {
@@ -178,9 +141,10 @@ async def query_exact(q: Question,USE_DATABASE, AGGREGATION_STRATEGY):
             "count": aggregates['count'],
             "date_type": date_type,
             "daily_breakdown": daily_breakdown if date_type == 'range' else None,
-            "operation_requested": operation,
-            "operation_result": round(op_result, 2) if op_result is not None and isinstance(op_result, (int, float)) else None,
-            "operation_explanation": op_explanation
+            "operations_detected": operations_info['operations'],
+            "primary_operation": operations_info['primary_operation'],
+            "multiple_operations": operations_info['is_multiple'],
+            "operation_results": operations_result['results']
         },
         "rows": rows_preview,
         "response": response_text,
@@ -188,6 +152,8 @@ async def query_exact(q: Question,USE_DATABASE, AGGREGATION_STRATEGY):
         "execution_time": f"{execution_time} secondes",
         "performance": {
             "database_query_ms": query_time if USE_DATABASE else None,
-            "total_ms": round(execution_time * 1000, 2)
+            "total_ms": round(execution_time * 1000, 2),
+            "used_llm": False
         }
     }
+
