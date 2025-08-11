@@ -17,4 +17,6 @@ pytest-asyncio
 httpx
 aiohttp
 psutil
+python-dotenv
+
 # npm install --save-dev cross-env

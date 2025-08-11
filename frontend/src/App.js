@@ -1,21 +1,137 @@
+// App.js
 import { useState } from 'react';
 import './App.css';
 
 function App() {
   const [question, setQuestion] = useState('');
-  const [response, setResponse] = useState('');
+  const [responseData, setResponseData] = useState(null);
   const [executionTime, setExecutionTime] = useState('');
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
 
   // Use env var if provided, otherwise default to your LAN IP
   const API_URL = process.env.REACT_APP_API_URL || "http://10.4.100.35:8000";
+
+  const formatNumberFR = (num) => {
+    if (num === null || num === undefined || Number.isNaN(num)) return '';
+    const n = Number(num);
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('fr-FR');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const buildTableData = (data) => {
+    if (!data || !data.computed) return null;
+
+    const computed = data.computed;
+    const dailyBreakdown = computed.daily_breakdown;
+    const dateType = computed.date_type;
+    const operation = computed.operation_requested;
+    
+    // Determine what to show based on the query type and available data
+    const hasOperation = operation && operation.op !== 'none' && computed.operation_result !== null;
+    const hasDaily = dailyBreakdown && Object.keys(dailyBreakdown).length > 0;
+
+    let tableData = {
+      headers: [],
+      rows: [],
+      title: ''
+    };
+
+    if (hasDaily && dateType === 'range') {
+      // Daily breakdown table
+      tableData.title = 'Consommation par jour';
+      tableData.headers = ['Date', 'Consommation (unités)', 'Nombre d\'entrées'];
+      
+      Object.entries(dailyBreakdown)
+        .sort(([a], [b]) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')))
+        .forEach(([date, data]) => {
+          tableData.rows.push([
+            date,
+            formatNumberFR(data.total),
+            data.entries.toString()
+          ]);
+        });
+
+      // Add total row
+      tableData.rows.push([
+        'TOTAL',
+        formatNumberFR(computed.sum),
+        computed.count.toString()
+      ]);
+
+      // Add operation result if present
+      if (hasOperation) {
+        tableData.rows.push([
+          computed.operation_explanation || 'Résultat',
+          formatNumberFR(computed.operation_result),
+          ''
+        ]);
+      }
+
+    } else if (hasOperation) {
+      // Operation result table
+      tableData.title = 'Résultat de l\'opération';
+      tableData.headers = ['Métrique', 'Valeur'];
+      
+      tableData.rows = [
+        ['Consommation totale', formatNumberFR(computed.sum) + ' unités'],
+        [computed.operation_explanation || 'Résultat de l\'opération', formatNumberFR(computed.operation_result) + ' unités']
+      ];
+
+    } else if (dateType === 'single') {
+      // Single date summary
+      tableData.title = 'Résumé de la consommation';
+      tableData.headers = ['Métrique', 'Valeur'];
+      
+      tableData.rows = [
+        ['Date', data.debug?.parsed_start || ''],
+        ['Famille', data.debug?.detected_family || ''],
+        ['Consommation totale', formatNumberFR(computed.sum) + ' unités'],
+        ['Nombre d\'entrées', computed.count.toString()]
+      ];
+
+      if (computed.count > 1) {
+        tableData.rows.push(
+          ['Moyenne par entrée', formatNumberFR(computed.mean) + ' unités'],
+          ['Minimum', formatNumberFR(computed.min) + ' unités'],
+          ['Maximum', formatNumberFR(computed.max) + ' unités']
+        );
+      }
+
+    } else {
+      // General statistics table
+      tableData.title = 'Statistiques de consommation';
+      tableData.headers = ['Métrique', 'Valeur'];
+      
+      tableData.rows = [
+        ['Période', `${data.debug?.parsed_start || ''} - ${data.debug?.parsed_end || ''}`],
+        ['Famille', data.debug?.detected_family || ''],
+        ['Consommation totale', formatNumberFR(computed.sum) + ' unités'],
+        ['Nombre d\'entrées', computed.count.toString()],
+        ['Moyenne', formatNumberFR(computed.mean) + ' unités'],
+        ['Minimum', formatNumberFR(computed.min) + ' unités'],
+        ['Maximum', formatNumberFR(computed.max) + ' unités']
+      ];
+    }
+
+    return tableData;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!question.trim()) return;
 
     setLoading(true);
+    setResponseData(null);
+    
     try {
       const res = await fetch(`${API_URL}/query`, {
         method: 'POST',
@@ -25,46 +141,33 @@ function App() {
         body: JSON.stringify({ question }),
       });
 
-      // If non-2xx, try to read text for debugging and throw
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`HTTP ${res.status} - ${text}`);
       }
 
-      // Try parsing JSON (server should return JSON)
       let data;
       try {
         data = await res.json();
       } catch (err) {
-        // If JSON parsing fails, show raw text
         const raw = await res.text();
         throw new Error(`Invalid JSON from server: ${raw}`);
       }
 
-      // Add to history with execution time
-      const newEntry = {
-        id: Date.now(),
-        question,
-        response: data.response,
-        executionTime: data.execution_time || data.executionTime || '',
-      };
-      setHistory([newEntry, ...history.slice(0, 4)]);
-
-      setResponse(data.response);
+      setResponseData(data);
       setExecutionTime(data.execution_time || data.executionTime || '');
+
     } catch (error) {
       console.error('Error:', error);
-      setResponse(`Erreur: Impossible de traiter votre requête — ${error.message}`);
+      setResponseData({
+        error: `Erreur: Impossible de traiter votre requête — ${error.message}`
+      });
       setExecutionTime('');
     }
     setLoading(false);
   };
 
-  const clearHistory = () => {
-    setHistory([]);
-    setResponse('');
-    setQuestion('');
-  };
+  const tableData = responseData ? buildTableData(responseData) : null;
 
   return (
     <div className="App">
@@ -104,7 +207,7 @@ function App() {
                     type="text"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Ex: Quelle est la quantité consommée pour la famille MAIS le 11/7/2025 ?"
+                    placeholder="Ex: Quelle est la quantité consommée pour la famille MAIS du 01/06/2024 au 03/06/2024 ?"
                     className="query-input"
                     disabled={loading}
                   />
@@ -126,82 +229,92 @@ function App() {
                   </button>
                 </div>
               </form>
-
-              {response && (
-                <div className="response-container">
-                  <div className="response-header">
-                    <h3>Réponse:</h3>
-                    <div className="response-meta">
-                      {executionTime && (
-                        <div className="time-badge">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                          </svg>
-                          {executionTime}
-                        </div>
-                      )}
-                      <div className="ai-badge">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 8V4H8"></path>
-                          <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                          <path d="M2 14h2"></path>
-                          <path d="M20 14h2"></path>
-                          <path d="M15 13v2"></path>
-                          <path d="M9 13v2"></path>
-                        </svg>
-                        AI Réponse
-                      </div>
-                    </div>
-                  </div>
-                  <div className="response-content">
-                    <p>{response}</p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="history-section">
-            <div className="history-card">
-              <div className="card-header">
-                <h3>Historique des requêtes</h3>
-                {history.length > 0 && (
-                  <button onClick={clearHistory} className="clear-button">
-                    Effacer
-                  </button>
+          {/* Results Section */}
+          {responseData && (
+            <div className="results-section">
+              <div className="results-card">
+                <div className="card-header">
+                  <h3>Résultats</h3>
+                  <div className="response-meta">
+                    {executionTime && (
+                      <div className="time-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        {executionTime}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {responseData.error ? (
+                  <div className="error-message">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="15" y1="9" x2="9" y2="15"/>
+                      <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    {responseData.error}
+                  </div>
+                ) : (
+                  <>
+                    {/* Natural Language Response */}
+                    {(responseData.response || responseData.llm_response) && (
+                      <div className="natural-response">
+                        <div className="response-header">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 8V4H8"></path>
+                            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                            <path d="M2 14h2"></path>
+                            <path d="M20 14h2"></path>
+                            <path d="M15 13v2"></path>
+                            <path d="M9 13v2"></path>
+                          </svg>
+                          <span>Réponse IA</span>
+                        </div>
+                        <p className="response-text">
+                          {responseData.response || responseData.llm_response}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Dynamic Data Table */}
+                    {tableData && tableData.rows.length > 0 && (
+                      <div className="data-table-container">
+                        <div className="table-header">
+                          <h4>{tableData.title}</h4>
+                        </div>
+                        <div className="table-wrapper">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                {tableData.headers.map((header, index) => (
+                                  <th key={index}>{header}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tableData.rows.map((row, rowIndex) => (
+                                <tr key={rowIndex} className={row[0] === 'TOTAL' ? 'total-row' : ''}>
+                                  {row.map((cell, cellIndex) => (
+                                    <td key={cellIndex} className={cellIndex === 0 ? 'first-col' : ''}>{cell}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-
-              {history.length === 0 ? (
-                <div className="empty-history">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  <p>Aucun historique</p>
-                  <small>Vos requêtes précédentes apparaîtront ici</small>
-                </div>
-              ) : (
-                <div className="history-list">
-                  {history.map((item) => (
-                    <div key={item.id} className="history-item">
-                      <div className="question">
-                        <strong>Q:</strong> {item.question}
-                      </div>
-                      <div className="response">
-                        <strong>R:</strong> {item.response}
-                        {item.executionTime && (
-                          <span className="history-time">
-                            ({item.executionTime})
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
+          )}
         </div>
 
         <footer className="app-footer">
