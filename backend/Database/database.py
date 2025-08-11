@@ -15,14 +15,13 @@ load_dotenv()
 EXCEL_FILE = os.getenv("EXCEL_FILE")
 PARQUET_FILE = os.getenv("PARQUET_FILE")
 SQLITE_DB = os.getenv("SQLITE_DB")
-USE_DATABASE = os.getenv("USE_DATABASE") 
-
+USE_DATABASE = os.getenv("USE_DATABASE", "True").lower() == "true"
 # -----------------------
 # Helpers: normalize, load
 # -----------------------
 
 
-def setup_sqlite_database():
+def setup_sqlite_database(PARQUET_FILE=PARQUET_FILE, EXCEL_FILE=EXCEL_FILE, SQLITE_DB=SQLITE_DB):
     """Create SQLite database with optimized schema and indexes"""
     print("Setting up SQLite database...")
     
@@ -87,7 +86,7 @@ def get_db_connection():
     finally:
         conn.close()
 
-def query_consumption_data(start_date, end_date, famille):
+def query_consumption_data(start_date, end_date, famille, USE_DATABASE=USE_DATABASE):
     """Fast database query for consumption data"""
     if not USE_DATABASE:
         # Fallback to pandas
@@ -98,7 +97,7 @@ def query_consumption_data(start_date, end_date, famille):
         ].copy()
         return df_filtered
     
-    # Use optimized SQL queries
+    # Rest of your database code remains the same...
     with get_db_connection() as conn:
         # Get aggregated data in one query
         cursor = conn.execute('''
@@ -115,7 +114,6 @@ def query_consumption_data(start_date, end_date, famille):
         
         agg_result = cursor.fetchone()
 
-        # Replace the aggregates section with this safe conversion:
         aggregates = {
             'sum': float(agg_result['total_sum']) if agg_result['total_sum'] is not None else 0.0,
             'mean': float(agg_result['mean_val']) if agg_result['mean_val'] is not None else 0.0,
@@ -172,10 +170,10 @@ def query_consumption_data(start_date, end_date, famille):
         }
 
 # Initialize data source
-def initialize_data_source():
+def initialize_data_source(USE_DATABASE=USE_DATABASE, PARQUET_FILE=PARQUET_FILE, EXCEL_FILE=EXCEL_FILE, SQLITE_DB=SQLITE_DB):
     if USE_DATABASE:
         if not os.path.exists(SQLITE_DB):
-            available_families = sorted(setup_sqlite_database())
+            available_families = sorted(setup_sqlite_database(PARQUET_FILE=PARQUET_FILE, EXCEL_FILE=EXCEL_FILE, SQLITE_DB=SQLITE_DB))
         else:
             # Get families from existing database
             with get_db_connection() as conn:
@@ -188,4 +186,4 @@ def initialize_data_source():
     return available_families, df_data
 
 available_families, df_data = initialize_data_source()
-setup_sqlite_database()
+setup_sqlite_database(PARQUET_FILE=PARQUET_FILE, EXCEL_FILE=EXCEL_FILE, SQLITE_DB=SQLITE_DB)

@@ -3,6 +3,7 @@ from Database.database import initialize_data_source
 from typing import Optional
 import re, difflib
 
+
 available_families, df_data = initialize_data_source()
 
 def detect_famille_in_text(text: str) -> Optional[str]:

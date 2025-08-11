@@ -1,21 +1,30 @@
-# main.py
 import os
 import sys
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import time 
-from Database.database import get_db_connection, initialize_data_source
-from functions.query_execute import query_exact
+from Database.database import initialize_data_source
+from functions.query_execute import query_exact, Question
 from dotenv import load_dotenv
-
+from backend.Requests.validation import validate_data
+from backend.Requests.health import check
 load_dotenv()
 
-USE_DATABASE = os.getenv("USE_DATABASE") 
+# FIX: Properly convert environment variables to boolean
+def str_to_bool(value):
+    """Convert string environment variable to boolean"""
+    if value is None:
+        return False
+    return value.lower() in ('true', '1', 'yes', 'on')
 
-available_families, df_data = initialize_data_source()
+USE_DATABASE = str_to_bool(os.getenv("USE_DATABASE", "True"))  # Default to True
+AGGREGATION_STRATEGY = os.getenv("AGGREGATION_STRATEGY", "hybrid")  # Default to hybrid
+
+print(f"DEBUG: USE_DATABASE = {USE_DATABASE} (type: {type(USE_DATABASE)})")
+print(f"DEBUG: AGGREGATION_STRATEGY = {AGGREGATION_STRATEGY}")
+
+available_families, df_data = initialize_data_source(USE_DATABASE=USE_DATABASE)
 app = FastAPI()
 
 # CORS — adapte si besoin
@@ -26,16 +35,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# -----------------------
-# Models
-# -----------------------
-
-
-# -----------------------
-# Date parsing (kept same but faster)
-# -----------------------
-
-
 
 # -----------------------
 # Request logger
@@ -51,42 +50,20 @@ async def log_requests(request: Request, call_next):
     return resp
 
 # -----------------------
-# OPTIMIZED Endpoint
+# Endpoint
 # -----------------------
 @app.post("/query")
-async def query_exact(q: Question):
-    return await query_exact(q)
+async def query_execution(q: Question):
+    return await query_exact(q, USE_DATABASE=USE_DATABASE, AGGREGATION_STRATEGY=AGGREGATION_STRATEGY)
+
 # -----------------------
 # Validation & Health Check
 # -----------------------
 @app.get("/health")
 async def health_check():
-    if USE_DATABASE:
-        with get_db_connection() as conn:
-            cursor = conn.execute('SELECT COUNT(*) as count FROM consumption')
-            count = cursor.fetchone()['count']
-            return {"status": "healthy", "database": "sqlite", "records": count}
-    else:
-        return {"status": "healthy", "database": "pandas", "records": len(df_data)}
+    return check(USE_DATABASE=USE_DATABASE)
 
-def validate_data():
-    print("\nDATA VALIDATION:")
-    if USE_DATABASE:
-        with get_db_connection() as conn:
-            cursor = conn.execute('SELECT COUNT(*) as count FROM consumption')
-            count = cursor.fetchone()['count']
-            cursor = conn.execute('SELECT MIN(date_conso), MAX(date_conso) FROM consumption')
-            date_range = cursor.fetchone()
-            print(f"Database mode - Total records: {count}")
-            print(f"Date range: {date_range[0]} to {date_range[1]}")
-    else:
-        print(f"Pandas mode - Total records: {len(df_data)}")
-        print(f"Date range: {df_data['DATE_CONSO'].min()} to {df_data['DATE_CONSO'].max()}")
-    
-    print(f"Available families: {len(available_families)}")
-    print(f"Families sample: {available_families[:10]}")
-
-validate_data()
+validate_data(USE_DATABASE=USE_DATABASE, df_data=df_data, available_families=available_families)
 
 if __name__ == "__main__":
     import uvicorn

@@ -2,20 +2,20 @@ from functions.normalize_text import normalize_text
 from functions.parse_date import parse_date_range_from_text
 from functions.detections import detect_famille_in_text, detect_math_operation
 import time
-import os
-from typing import Optional
-from dotenv import load_dotenv
 from Models.model import initialize_llm_model
 from pydantic import BaseModel
 from Database.database import initialize_data_source, query_consumption_data
 import pandas as pd
-import datetime
+from datetime import datetime
 from functions.operations import perform_operation
-load_dotenv()
-
+from typing import Optional
 available_families, df_data = initialize_data_source()
 
-AGGREGATION_STRATEGY = os.getenv("AGGREGATION_STRATEGY")
+
+
+# -----------------------
+# Models
+# -----------------------
 
 class Question(BaseModel):
     question: str
@@ -23,7 +23,7 @@ class Question(BaseModel):
 
 llm = initialize_llm_model()
 
-async def query_exact(q: Question):
+async def query_exact(q: Question,USE_DATABASE, AGGREGATION_STRATEGY):
     start_time = time.time()
     q_text: str = q.question or ""
     mode = (q.mode or AGGREGATION_STRATEGY or "hybrid").lower()
@@ -61,7 +61,7 @@ async def query_exact(q: Question):
 
     # OPTIMIZED: Query data using fast database approach
     query_start = time.time()
-    data_result = query_consumption_data(start_date, end_date, famille)
+    data_result = query_consumption_data(start_date=start_date, end_date=end_date, famille=famille, USE_DATABASE=USE_DATABASE)
     query_time = round((time.time() - query_start) * 1000, 2)
     print(f"Database query took: {query_time}ms")
 
