@@ -48,7 +48,7 @@ function App() {
     if (hasDaily && dateType === 'range') {
       // Daily breakdown table
       tableData.title = 'Consommation par jour';
-      tableData.headers = ['Date', 'Consommation (unités)', 'Nombre d\'entrées'];
+      tableData.headers = ['Date', 'Consommation (tonnes)', 'Nombre d\'entrées'];
       
       Object.entries(dailyBreakdown)
         .sort(([a], [b]) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')))
@@ -82,8 +82,8 @@ function App() {
       tableData.headers = ['Métrique', 'Valeur'];
       
       tableData.rows = [
-        ['Consommation totale', formatNumberFR(computed.sum) + ' unités'],
-        [computed.operation_explanation || 'Résultat de l\'opération', formatNumberFR(computed.operation_result) + ' unités']
+        ['Consommation totale', formatNumberFR(computed.sum) + ' tonnes'],
+        [computed.operation_explanation || 'Résultat de l\'opération', formatNumberFR(computed.operation_result) + ' tonnes']
       ];
 
     } else if (dateType === 'single') {
@@ -94,15 +94,15 @@ function App() {
       tableData.rows = [
         ['Date', data.debug?.parsed_start || ''],
         ['Famille', data.debug?.detected_family || ''],
-        ['Consommation totale', formatNumberFR(computed.sum) + ' unités'],
+        ['Consommation totale', formatNumberFR(computed.sum) + ' tonnes'],
         ['Nombre d\'entrées', computed.count.toString()]
       ];
 
       if (computed.count > 1) {
         tableData.rows.push(
-          ['Moyenne par entrée', formatNumberFR(computed.mean) + ' unités'],
-          ['Minimum', formatNumberFR(computed.min) + ' unités'],
-          ['Maximum', formatNumberFR(computed.max) + ' unités']
+          ['Moyenne par entrée', formatNumberFR(computed.mean) + ' tonnes'],
+          ['Minimum', formatNumberFR(computed.min) + ' tonnes'],
+          ['Maximum', formatNumberFR(computed.max) + ' tonnes']
         );
       }
 
@@ -114,11 +114,11 @@ function App() {
       tableData.rows = [
         ['Période', `${data.debug?.parsed_start || ''} - ${data.debug?.parsed_end || ''}`],
         ['Famille', data.debug?.detected_family || ''],
-        ['Consommation totale', formatNumberFR(computed.sum) + ' unités'],
+        ['Consommation totale', formatNumberFR(computed.sum) + ' tonnes'],
         ['Nombre d\'entrées', computed.count.toString()],
-        ['Moyenne', formatNumberFR(computed.mean) + ' unités'],
-        ['Minimum', formatNumberFR(computed.min) + ' unités'],
-        ['Maximum', formatNumberFR(computed.max) + ' unités']
+        ['Moyenne', formatNumberFR(computed.mean) + ' tonnes'],
+        ['Minimum', formatNumberFR(computed.min) + ' tonnes'],
+        ['Maximum', formatNumberFR(computed.max) + ' tonnes']
       ];
     }
 

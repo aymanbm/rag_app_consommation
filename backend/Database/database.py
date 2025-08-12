@@ -1,3 +1,4 @@
+# database.py
 import sqlite3
 import pandas as pd
 import os
@@ -31,7 +32,7 @@ def setup_sqlite_database(PARQUET_FILE=PARQUET_FILE, EXCEL_FILE=EXCEL_FILE, SQLI
         df = pd.read_parquet(PARQUET_FILE)
     else:
         print("Loading from Excel...")
-        df = pd.read_excel(EXCEL_FILE)
+        df = pd.read_excel("./ressources/" + EXCEL_FILE)
         df.to_parquet(PARQUET_FILE, index=False)
 
     # Clean and normalize data

@@ -11,12 +11,15 @@ def detect_famille_in_text(text: str) -> Optional[str]:
 
     variations = {
         normalize_text("MAIS"): normalize_text("MAIS"),
+        normalize_text("MAISE"): normalize_text("MAIS"),
         normalize_text("MAÏS"): normalize_text("MAIS"),
         normalize_text("CORN"): normalize_text("MAIS"),
         normalize_text("BLE FOURRAGER"): normalize_text("BLE FOURRAGER"),
         normalize_text("BLED FOURRAGER"): normalize_text("BLE FOURRAGER"),
         normalize_text("BLÉ FOURRAGER"): normalize_text("BLE FOURRAGER"),
         normalize_text("BLÉ FOURAGER"): normalize_text("BLE FOURRAGER"),
+        normalize_text("BLÉ"): normalize_text("BLE FOURRAGER"),
+        normalize_text("BLE"): normalize_text("BLE FOURRAGER"),
         normalize_text("ORG"): normalize_text("ORGE"),
         normalize_text("SOJA"): normalize_text("GRAINES DE SOJA"),
     }
