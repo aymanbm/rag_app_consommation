@@ -4,11 +4,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import time 
-from Database.database import initialize_data_source
-from functions.query_execute import query_exact_intelligent, Question
+from backend.Database.database_receptions import initialize_data_source
+from backend.functions.reception.query_execute import query_exact_intelligent, Question
 from dotenv import load_dotenv
-from backend.Requests.validation import validate_data
-from backend.Requests.health import check
+from backend.Requests.reception.validation import validate_data
+from backend.Requests.reception.health import check
 load_dotenv()
 
 # FIX: Properly convert environment variables to boolean
@@ -25,7 +25,10 @@ AGGREGATION_STRATEGY = os.getenv("AGGREGATION_STRATEGY", "hybrid")  # Default to
 print(f"DEBUG: USE_DATABASE = {USE_DATABASE} (type: {type(USE_DATABASE)})")
 print(f"DEBUG: AGGREGATION_STRATEGY = {AGGREGATION_STRATEGY}")
 
-available_families, df_data = initialize_data_source(USE_DATABASE=USE_DATABASE)
+available_libelle_prods, df_data = initialize_data_source(USE_DATABASE=USE_DATABASE)
+available_silo_destinations, df_data = initialize_data_source(thing="SILO_DEST")
+
+# available_families, df_data = initialize_data_source(USE_DATABASE=USE_DATABASE)
 app = FastAPI()
 
 # CORS — adapte si besoin
@@ -64,7 +67,8 @@ async def query_exact(q: Question):
 async def health_check():
     return check(USE_DATABASE=USE_DATABASE)
 
-validate_data(USE_DATABASE=USE_DATABASE, df_data=df_data, available_families=available_families)
+validate_data(USE_DATABASE=USE_DATABASE, df_data=df_data, available_libelle=available_libelle_prods)
+# validate_data(USE_DATABASE=USE_DATABASE, df_data=df_data, available_families=available_libelle_prods)
 
 if __name__ == "__main__":
     import uvicorn

@@ -17,7 +17,7 @@ def parse_smart_date_range(text: str, current_date: datetime = None) -> Tuple[Op
     
     # First try existing date parsing for explicit dates
     try:
-        from functions.parse_date import parse_date_range_from_text
+        from backend.functions.parse_date import parse_date_range_from_text
         start_date, end_date, date_type = parse_date_range_from_text(text)
         if start_date and end_date:
             return start_date, end_date, date_type, temporal_info

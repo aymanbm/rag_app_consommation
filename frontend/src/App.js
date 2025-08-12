@@ -1,10 +1,14 @@
-// App.js
-import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { useRef, useState } from 'react';
 import './App.css';
+import Receptions from './components/Receptions.js';
+import Mouvements from './components/Mouvements.js';
+import Consommations from './components/Consommations.js';
 
 function App() {
+  const [activeApp, setActiveApp] = useState('consommation');
   const [question, setQuestion] = useState('');
-  const [responseData, setResponseData] = useState(null);
+  const [responseData, setResponseData] = useState();
   const [executionTime, setExecutionTime] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -167,166 +171,136 @@ function App() {
     setLoading(false);
   };
 
+  const handleActiveApp = (name) => {    
+    setActiveApp(name);
+    setResponseData(null);
+  };
+
   const tableData = responseData ? buildTableData(responseData) : null;
 
   return (
-    <div className="App">
-      <header className="app-header">
-        <div className="header-content">
-          <div className="logo-container">
-            <div className="logo">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
-                <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
-                <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                <line x1="12" y1="22.08" x2="12" y2="12"></line>
-              </svg>
-            </div>
-            <h1>Système de Consultation de Données</h1>
-          </div>
-          <div className="header-info">
-            <p>Analyse de consommation en temps réel</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="app-container">
-        <div className="dashboard">
-          <div className="query-section">
-            <div className="query-card">
-              <div className="card-header">
-                <h2>Posez votre question</h2>
-                <p className="subtitle">Obtenez des réponses précises à partir de vos données</p>
+    <Router>
+      <div className="App">
+        <header className="app-header">
+          <div className="header-content">
+            <div className="logo-container">
+              <div className="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                  <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                  <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
               </div>
+              <h1>Système de Consultation de Données</h1>
+            </div>
+            <div className="header-info">
+              <p>Analyse de consommation en temps réel</p>
+            </div>
+          </div>
+        </header>
 
-              <form onSubmit={handleSubmit} className="query-form">
-                <div className="input-group">
-                  <input
-                    type="text"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Ex: Quelle est la quantité consommée pour la famille MAIS du 01/06/2024 au 03/06/2024 ?"
-                    className="query-input"
-                    disabled={loading}
+        <main className="app-container">
+          <div className="dashboard">
+            {/* Navigation Sidebar */}
+            <div className="sidebar">
+              {/* <div className="sidebar-header">
+                <h3>Applications</h3>
+              </div> */}
+              <nav className="nav-menu">
+                <NavLink 
+                  to="/consommation"
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                  </svg>
+                  Consommation
+                </NavLink>
+
+                <NavLink 
+                  to="/receptions"
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path>
+                    <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon>
+                  </svg>
+                  Réceptions
+                </NavLink>
+
+                <NavLink 
+                  to="/mouvement"
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                  Mouvement
+                </NavLink>
+              </nav>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="main-content">
+              <Routes>
+
+                {/* Consommation App */}
+                <Route path="/consommation" element={
+                  <Consommations
+                    question={question}
+                    setQuestion={setQuestion}
+                    handleSubmit={handleSubmit}
+                    loading={loading}
+                    responseData={responseData}
+                    executionTime={executionTime}
+                    tableData={tableData}
                   />
-                  <button type="submit" disabled={loading || !question.trim()} className="submit-button">
-                    {loading ? (
-                        <>
-                          <span className="spinner" aria-hidden="true"></span>
-                          Traitement...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="icon-send" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                          </svg>
-                          <span className="btn-label">Envoyer</span>
-                        </>
-                      )}
-                  </button>
-                </div>
-              </form>
+                } />
+
+                {/* Réceptions App */}
+                <Route path="/receptions" element={
+                  <Receptions
+                    question={question}
+                    setQuestion={setQuestion}
+                    handleSubmit={handleSubmit}
+                    loading={loading}
+                    responseData={responseData}
+                    executionTime={executionTime}
+                    tableData={tableData}
+                  />
+                } />
+
+                {/* Mouvement App */}
+                <Route path="/mouvement" element={
+                  <Mouvements
+                    question={question}
+                    setQuestion={setQuestion}
+                    handleSubmit={handleSubmit}
+                    loading={loading}
+                    responseData={responseData}
+                    executionTime={executionTime}
+                    tableData={tableData}
+                  />
+                }/>
+              </Routes>
             </div>
           </div>
 
-          {/* Results Section */}
-          {responseData && (
-            <div className="results-section">
-              <div className="results-card">
-                <div className="card-header">
-                  <h3>Résultats</h3>
-                  <div className="response-meta">
-                    {executionTime && (
-                      <div className="time-badge">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"/>
-                          <polyline points="12 6 12 12 16 14"/>
-                        </svg>
-                        {executionTime}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {responseData.error ? (
-                  <div className="error-message">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="15" y1="9" x2="9" y2="15"/>
-                      <line x1="9" y1="9" x2="15" y2="15"/>
-                    </svg>
-                    {responseData.error}
-                  </div>
-                ) : (
-                  <>
-                    {/* Natural Language Response */}
-                    {(responseData.response || responseData.llm_response) && (
-                      <div className="natural-response">
-                        <div className="response-header">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 8V4H8"></path>
-                            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                            <path d="M2 14h2"></path>
-                            <path d="M20 14h2"></path>
-                            <path d="M15 13v2"></path>
-                            <path d="M9 13v2"></path>
-                          </svg>
-                          <span>Réponse IA</span>
-                        </div>
-                        <p className="response-text">
-                          {responseData.response || responseData.llm_response}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Dynamic Data Table */}
-                    {tableData && tableData.rows.length > 0 && (
-                      <div className="data-table-container">
-                        <div className="table-header">
-                          <h4>{tableData.title}</h4>
-                        </div>
-                        <div className="table-wrapper">
-                          <table className="data-table">
-                            <thead>
-                              <tr>
-                                {tableData.headers.map((header, index) => (
-                                  <th key={index}>{header}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {tableData.rows.map((row, rowIndex) => (
-                                <tr key={rowIndex} className={row[0] === 'TOTAL' ? 'total-row' : ''}>
-                                  {row.map((cell, cellIndex) => (
-                                    <td key={cellIndex} className={cellIndex === 0 ? 'first-col' : ''}>{cell}</td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+          <footer className="app-footer">
+            <p>Système de Consultation de Données • Analyse en temps réel • Développé par AYMANE EL MAGHRAOUI</p>
+            <div className="footer-links">
+              <span>Documentation</span>
+              <span>À propos</span>
+              <span>Contact</span>
             </div>
-          )}
-        </div>
-
-        <footer className="app-footer">
-          <p>Système de Consultation de Données • Analyse en temps réel • Développé par AYMANE EL MAGHRAOUI</p>
-          <div className="footer-links">
-            <span>Documentation</span>
-            <span>À propos</span>
-            <span>Contact</span>
-          </div>
-        </footer>
-      </main>
-    </div>
+          </footer>
+        </main>
+      </div>
+    </Router>
   );
 }
 
