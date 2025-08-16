@@ -36,11 +36,11 @@ def detect_libelle_prod_in_text(text: str) -> Optional[str]:
         normalize_text("MAISE ROUMAIN"): "MAIS ROUMAIN",
         normalize_text("MAÏS ROUMAIN"): "MAIS ROUMAIN",
 
+        normalize_text("Mais Broyé Fin"): "Mais Broyé Fin",
         normalize_text("MAIS BROYE"): "MAIS BROYE",
         normalize_text("MAIS BROY"): "MAIS BROYE",
         normalize_text("MAISE BROYE"): "MAIS BROYE",
         normalize_text("MAÏS BROYE"): "MAIS BROYE",
-        normalize_text("Mais Broyé Fin"): "Mais Broyé Fin",
 
         normalize_text("MAIS UKRENIEN"): "MAIS UKRENIEN",
         normalize_text("MAIS UKREN"): "MAIS UKRENIEN",
@@ -50,32 +50,42 @@ def detect_libelle_prod_in_text(text: str) -> Optional[str]:
         normalize_text("CORN"): "MAIS UKRENIEN",
 
         normalize_text("BLE FOURRAGER"): "BLE FOURRAGER",
+        normalize_text("BLE FOURRAGER LOCAL"): "BLE FOURRAGER LOCAL",
         normalize_text("BLED FOURRAGER"): "BLE FOURRAGER",
         normalize_text("BLÉ FOURRAGER"): "BLE FOURRAGER",
         normalize_text("BLÉ FOURAGER"): "BLE FOURRAGER",
         normalize_text("BLÉ"): "BLE FOURRAGER",
         normalize_text("BLE"): "BLE FOURRAGER",
 
-        normalize_text("BLE FOURRAGER LOCAL"): "BLE FOURRAGER LOCAL",
 
-        normalize_text("ORG"): "ORGE IMPORT",
-        normalize_text("ORGe"): "ORGE",
-        normalize_text("ORGE"): "ORGE IMPORT",
+        normalize_text("ORG"): "ORGE",
+        normalize_text("ORGE IMPORT"): "ORGE IMPORT",
+        normalize_text("ORGE IMPORTE"): "ORGE IMPORT",
         normalize_text("ORGE LOCALE Q1"): "ORGE LOCALE Q1",
         normalize_text("ORGE LOCALE"): "ORGE LOCALE Q1",
         normalize_text("ORGE RUSSE"): "ORGE RUSSE",
 
+        normalize_text("GRAINE DE SOJA EXTRUDEE"): "GRAINE DE SOJA EXTRUDEE",
         normalize_text("SOJA"): "GRAINES DE SOJA",
         normalize_text("GRAINES DE SOJA"): "GRAINES DE SOJA",
-        normalize_text("GRAINE DE SOJA EXTRUDEE."): "GRAINE DE SOJA EXTRUDEE.",
     }
-    
+    counter = 0
+    length = 0
+    the_one_variant = {}
     for variant, standard in variations.items():
         if variant in text_norm:
-            return standard
+            counter += 1
+            the_one_variant[len(variant)] = standard
+
+        if counter > 1:
+            list_length = list(the_one_variant.keys())
+            max_length = max(list_length)
+            print(f"DEBUG: Multiple variants detected in text '{text_norm}': {the_one_variant}")
+            return the_one_variant[max_length]
 
     for libelle in available_libelle_prods:
         if libelle == text_norm or libelle in text_norm:
+            print(f"DEBUG: Detected exact match for libelle '{libelle}'")
             return libelle
 
     matches = difflib.get_close_matches(text_norm, available_libelle_prods, n=1, cutoff=0.8)
@@ -83,6 +93,7 @@ def detect_libelle_prod_in_text(text: str) -> Optional[str]:
         return matches[0]
     
     words = [w for w in re.split(r'[\s,;:.!?()]+', text_norm) if len(w) > 2]
+    print(f"DEBUG: Words extracted from text: {words}")
     for w in words:
         matches = difflib.get_close_matches(w, available_libelle_prods, n=1, cutoff=0.85)
         if matches:

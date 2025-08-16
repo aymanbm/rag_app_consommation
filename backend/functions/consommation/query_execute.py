@@ -17,11 +17,11 @@ from backend.functions.consommation.intelligent_analyzer import (
     generate_intelligent_summary
 )
 
-class Question(BaseModel):
+class Question_consommation(BaseModel):
     question: str
     mode: Optional[str] = None
 
-async def query_exact_intelligent(q: Question, USE_DATABASE=True, AGGREGATION_STRATEGY="hybrid"):
+async def query_exact_intelligent_consommation(q: Question_consommation, USE_DATABASE=True, AGGREGATION_STRATEGY="hybrid"):
     start_time = time.time()
     current_date = datetime.now()  # 🔥 CURRENT DATE ACCESS
     q_text: str = q.question or ""

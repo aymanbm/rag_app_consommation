@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-EXCEL_FILE = os.getenv("EXCEL_FILE")
-PARQUET_FILE = os.getenv("PARQUET_FILE")
+EXCEL_FILE = "CONSOMATION.xlsx"
+PARQUET_FILE = "CONSOMATION.parquet"
 
 def load_data_pandas() -> pd.DataFrame:
     """Original pandas approach - kept as fallback"""

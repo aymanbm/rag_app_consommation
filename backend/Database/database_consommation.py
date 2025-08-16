@@ -13,9 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-EXCEL_FILE = os.getenv("EXCEL_FILE")
-PARQUET_FILE = os.getenv("PARQUET_FILE")
-SQLITE_DB = os.getenv("SQLITE_DB")
+EXCEL_FILE = "CONSOMATION.xlsx"
+PARQUET_FILE = "CONSOMATION.parquet"
+SQLITE_DB = "consommation_data.db"
 USE_DATABASE = os.getenv("USE_DATABASE", "True").lower() == "true"
 # -----------------------
 # Helpers: normalize, load

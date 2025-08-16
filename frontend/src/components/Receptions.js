@@ -14,13 +14,13 @@ const Receptions = (props) => {
             <p className="subtitle">Obtenez des réponses précises à partir de vos données</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="query-form">
+          <form onSubmit={handleSubmit} className="query-form" name="reception">
             <div className="input-group">
               <input
                 type="text"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Ex: Quelle est la quantité consommée pour la famille MAIS du 01/06/2024 au 03/06/2024 ?"
+                placeholder="Ex: Quelle est la quantité réceptionnée pour le produit MAIS AMERICAIN du 01/06/2024 au 03/06/2024 ?"
                 className="query-input"
                 disabled={loading}
               />

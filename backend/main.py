@@ -5,7 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import time 
 from backend.Database.database_receptions import initialize_data_source
-from backend.functions.reception.query_execute import query_exact_intelligent, Question
+from backend.functions.reception.query_execute import query_exact_intelligent_reception, Question_reception
+from backend.functions.consommation.query_execute import query_exact_intelligent_consommation, Question_consommation
 from dotenv import load_dotenv
 from backend.Requests.reception.validation import validate_data
 from backend.Requests.reception.health import check
@@ -56,10 +57,13 @@ async def log_requests(request: Request, call_next):
 # -----------------------
 # Endpoint
 # -----------------------
-@app.post("/query")
-async def query_exact(q: Question):
-    return await query_exact_intelligent(q, USE_DATABASE=USE_DATABASE, AGGREGATION_STRATEGY=AGGREGATION_STRATEGY)
+@app.post("/query/consommation")
+async def query_exact(q: Question_consommation):
+    return await query_exact_intelligent_consommation(q, USE_DATABASE=USE_DATABASE, AGGREGATION_STRATEGY=AGGREGATION_STRATEGY)
 
+@app.post("/query/reception")
+async def query_exact(q: Question_reception):
+    return await query_exact_intelligent_reception(q, USE_DATABASE=USE_DATABASE, AGGREGATION_STRATEGY=AGGREGATION_STRATEGY)
 # -----------------------
 # Validation & Health Check
 # -----------------------

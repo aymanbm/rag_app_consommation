@@ -21,8 +21,8 @@ def load_data_pandas() -> pd.DataFrame:
         print("Loading from CSV...")
         df = pd.read_csv(EXCEL_FILE)
         # df.to_parquet(PARQUET_FILE, index=False)
-    print("hellllllllllllllllllllllllllllllo = ",df.head(1))
-    df['DATE_RECEP'] = pd.to_datetime(df['DATE_RECEPTION'], errors='coerce', dayfirst=True).dt.date
+
+    df['DATE_RECEP'] = pd.to_datetime(df['DATE_RECEPTION'], errors='coerce', dayfirst=False).dt.date
     df['FAMILLE_NORM'] = df['FAMILLE'].astype(str).apply(normalize_text)
     df['LIBELLE_PROD'] = df['LIBELLE_PRODUIT'].astype(str).apply(normalize_text)
     df['PRODUIT'] = df['PRODUIT'].astype(str).apply(normalize_text)

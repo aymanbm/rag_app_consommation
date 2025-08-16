@@ -17,11 +17,11 @@ from backend.functions.reception.intelligent_analyzer import (
     generate_intelligent_summary
 )
 
-class Question(BaseModel):
+class Question_reception(BaseModel):
     question: str
     mode: Optional[str] = None
 
-async def query_exact_intelligent(q: Question, USE_DATABASE=True, AGGREGATION_STRATEGY="hybrid"):
+async def query_exact_intelligent_reception(q: Question_reception, USE_DATABASE=True, AGGREGATION_STRATEGY="hybrid"):
     start_time = time.time()
     current_date = datetime.now()  # 🔥 CURRENT DATE ACCESS
     q_text: str = q.question or ""
@@ -39,7 +39,8 @@ async def query_exact_intelligent(q: Question, USE_DATABASE=True, AGGREGATION_ST
     # Detect family
     labelle_prod = detect_libelle_prod_in_text(q_text)
     silo_dest = detect_silo_dest_in_text(q_text)
-    
+    print(f"Detected libellé: {labelle_prod}, Silo destination: {silo_dest}")
+
     debug_info.update({
         'normalized_question': normalize_text(q_text),
         'current_date': current_date.strftime('%d/%m/%Y %H:%M:%S'),
@@ -60,10 +61,10 @@ async def query_exact_intelligent(q: Question, USE_DATABASE=True, AGGREGATION_ST
             "execution_time": f"{execution_time} secondes"
         }
 
-    if not labelle_prod:
+    if not labelle_prod and not silo_dest:
         execution_time = round(time.time() - start_time, 2)
         return {
-            "response": "libellé non trouvé. Formats acceptés: Mais Broyé Fin, MAIS, MAIS AMERICAIN, ORGE IMPORT, BLE FOURRAGER, MAIS BRESILIEN, GRAINES DE SOJA, ORGE LOCALE Q1, MAIS ARGENTIN, MAIS ROUMAIN, ORGE RUSSE, GRAINE DE SOJA EXTRUDEE., BLE FOURRAGER LOCAL, MAIS BROYE, MAIS UKRENIEN",
+            "response": "libellé ou Silo destination non trouvé. Formats acceptés: Mais Broyé Fin, MAIS, MAIS AMERICAIN, ORGE IMPORT, BLE FOURRAGER, MAIS BRESILIEN, GRAINES DE SOJA, ORGE LOCALE Q1, MAIS ARGENTIN, MAIS ROUMAIN, ORGE RUSSE, GRAINE DE SOJA EXTRUDEE., BLE FOURRAGER LOCAL, MAIS BROYE, MAIS UKRENIEN",
             "debug": debug_info,
             "execution_time": f"{execution_time} secondes"
         }
@@ -75,13 +76,16 @@ async def query_exact_intelligent(q: Question, USE_DATABASE=True, AGGREGATION_ST
     # Handle comparison queries (special case)
     if date_type == 'comparison' and temporal_info.get('comparison_periods'):
         return await handle_comparison_query(
-            q_text, labelle_prod, temporal_info, complexity_analysis, 
+            q_text, labelle_prod, silo_dest, temporal_info, complexity_analysis,
             USE_DATABASE, current_date, start_time, debug_info
         )
 
     # Regular data query
     query_start = time.time()
-    data_result = query_reception_data(start_date, end_date, labelle_prod, USE_DATABASE)
+    data_query = None
+
+    data_result = query_reception_data(start_date, end_date, labelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
+
     query_time = round((time.time() - query_start) * 1000, 2)
     print(f"Database query took: {query_time}ms")
 
@@ -136,7 +140,7 @@ async def query_exact_intelligent(q: Question, USE_DATABASE=True, AGGREGATION_ST
         }
     }
 
-async def handle_comparison_query(q_text, labelle_prod, temporal_info, complexity_analysis, 
+async def handle_comparison_query(q_text, labelle_prod, silo_dest, temporal_info, complexity_analysis, 
                                 USE_DATABASE, current_date, start_time, debug_info):
     """Handle comparison queries between two periods"""
     
@@ -145,9 +149,9 @@ async def handle_comparison_query(q_text, labelle_prod, temporal_info, complexit
     period2 = comparison_periods[1]
     
     # Query data for both periods
-    data1 = query_reception_data(period1['start'], period1['end'], labelle_prod, USE_DATABASE)
-    data2 = query_reception_data(period2['start'], period2['end'], labelle_prod, USE_DATABASE)
-    
+    data1 = query_reception_data(period1['start'], period1['end'], labelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
+    data2 = query_reception_data(period2['start'], period2['end'], labelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
+
     # Process both datasets
     aggregates1, _, _ = process_data_result(data1, USE_DATABASE, 'range')
     aggregates2, _, _ = process_data_result(data2, USE_DATABASE, 'range')

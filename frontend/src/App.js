@@ -31,7 +31,7 @@ function App() {
     }
   };
 
-  const buildTableData = (data) => {
+  const buildTableData = (data, type_name) => {
     if (!data || !data.computed) return null;
 
     const computed = data.computed;
@@ -51,9 +51,9 @@ function App() {
 
     if (hasDaily && dateType === 'range') {
       // Daily breakdown table
-      tableData.title = 'Consommation par jour';
-      tableData.headers = ['Date', 'Consommation (tonnes)', 'Nombre d\'entrées'];
-      
+      tableData.title = `${type_name} par jour`;
+      tableData.headers = ['Date', `${type_name} (tonnes)`, 'Nombre d\'entrées'];
+
       Object.entries(dailyBreakdown)
         .sort(([a], [b]) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')))
         .forEach(([date, data]) => {
@@ -86,19 +86,19 @@ function App() {
       tableData.headers = ['Métrique', 'Valeur'];
       
       tableData.rows = [
-        ['Consommation totale', formatNumberFR(computed.sum) + ' tonnes'],
+        [`${type_name} totale`, formatNumberFR(computed.sum) + ' tonnes'],
         [computed.operation_explanation || 'Résultat de l\'opération', formatNumberFR(computed.operation_result) + ' tonnes']
       ];
 
     } else if (dateType === 'single') {
       // Single date summary
-      tableData.title = 'Résumé de la consommation';
+      tableData.title = `Résumé de la ${type_name}`;
       tableData.headers = ['Métrique', 'Valeur'];
       
       tableData.rows = [
         ['Date', data.debug?.parsed_start || ''],
         ['Famille', data.debug?.detected_family || ''],
-        ['Consommation totale', formatNumberFR(computed.sum) + ' tonnes'],
+        [`${type_name} totale`, formatNumberFR(computed.sum) + ' tonnes'],
         ['Nombre d\'entrées', computed.count.toString()]
       ];
 
@@ -112,13 +112,13 @@ function App() {
 
     } else {
       // General statistics table
-      tableData.title = 'Statistiques de consommation';
+      tableData.title = `Statistiques de ${type_name}`;
       tableData.headers = ['Métrique', 'Valeur'];
       
       tableData.rows = [
         ['Période', `${data.debug?.parsed_start || ''} - ${data.debug?.parsed_end || ''}`],
         ['Famille', data.debug?.detected_family || ''],
-        ['Consommation totale', formatNumberFR(computed.sum) + ' tonnes'],
+        [`${type_name} totale`, formatNumberFR(computed.sum) + ' tonnes'],
         ['Nombre d\'entrées', computed.count.toString()],
         ['Moyenne', formatNumberFR(computed.mean) + ' tonnes'],
         ['Minimum', formatNumberFR(computed.min) + ' tonnes'],
@@ -131,19 +131,33 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!question.trim()) return;
 
     setLoading(true);
     setResponseData(null);
     
     try {
-      const res = await fetch(`${API_URL}/query`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ question }),
-      });
+      const formName = e.target.name;
+      let res;
+      if (formName === "consommation") {
+          res = await fetch(`${API_URL}/query/consommation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ question }),
+        });
+      } else if (formName === "reception") {
+          res = await fetch(`${API_URL}/query/reception`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ question }),
+        });
+      }
+      
 
       if (!res.ok) {
         const text = await res.text();
@@ -171,13 +185,26 @@ function App() {
     setLoading(false);
   };
 
-  const handleActiveApp = (name) => {    
-    setActiveApp(name);
-    setResponseData(null);
-  };
+  // const handleActiveApp = (name) => {    
+  //   setActiveApp(name);
+  //   setResponseData(null);
+  // };
 
-  const tableData = responseData ? buildTableData(responseData) : null;
+  // const tableData = responseData ? buildTableData(responseData, "réception") : null;
 
+  let tableData;
+  if (responseData) {
+      console.log(responseData);
+      
+      if (String(responseData.response).toLocaleLowerCase().includes("reception")) {
+        tableData = responseData ? buildTableData(responseData, "réception") : null;
+        console.log("Response Data:", responseData);
+        
+      } else if (String(responseData.response).toLocaleLowerCase().includes("consommation")) {        
+        tableData = responseData ? buildTableData(responseData, "consommation") : null;
+        console.log("Response Data:", responseData);
+      }
+    }
   return (
     <Router>
       <div className="App">
@@ -232,15 +259,16 @@ function App() {
                   Réceptions
                 </NavLink>
 
-                <NavLink 
+                {/* <NavLink 
                   to="/mouvement"
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                  style={{opacity: 0.5, cursor: 'not-allowed',disabled: true}}
+                  className={({ isActive }) => `nav-item ${isActive ? 'desactive' : ''}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                   </svg>
                   Mouvement
-                </NavLink>
+                </NavLink> */}
               </nav>
             </div>
 

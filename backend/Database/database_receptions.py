@@ -76,14 +76,20 @@ def get_db_connection():
     finally:
         conn.close()
 
-def query_reception_data(start_date, end_date, libelle_prod, USE_DATABASE=USE_DATABASE):
+def query_reception_data(start_date, end_date, labelle_prod, silo_dest, USE_DATABASE=USE_DATABASE):
+    if labelle_prod != None:
+        return query_labelle(start_date, end_date, silo_dest, USE_DATABASE=USE_DATABASE)
+    elif silo_dest != None:
+        return query_silo(start_date, end_date, silo_dest, USE_DATABASE=USE_DATABASE)
+
+def query_labelle(start_date, end_date, labelle_prod, USE_DATABASE=USE_DATABASE):
     """Fast database query for reception data"""
     if not USE_DATABASE:
         # Fallback to pandas
         df_filtered = df_data[
             (df_data['DATE_RECEP'] >= start_date) &
             (df_data['DATE_RECEP'] <= end_date) &
-            (df_data['LIBELLE_PROD'] == libelle_prod)
+            (df_data['LIBELLE_PROD'] == labelle_prod)
         ].copy()
         return df_filtered
     
@@ -100,7 +106,7 @@ def query_reception_data(start_date, end_date, libelle_prod, USE_DATABASE=USE_DA
             FROM reception
             WHERE date_recep BETWEEN ? AND ?
             AND libelle_prod = ?
-        ''', (start_date, end_date, libelle_prod))
+        ''', (start_date, end_date, labelle_prod))
 
         agg_result = cursor.fetchone()
 
@@ -123,7 +129,7 @@ def query_reception_data(start_date, end_date, libelle_prod, USE_DATABASE=USE_DA
             AND libelle_prod = ?
             GROUP BY date_recep
             ORDER BY date_recep
-        ''', (start_date, end_date, libelle_prod))
+        ''', (start_date, end_date, labelle_prod))
         
         daily_results = daily_cursor.fetchall()
         
@@ -135,7 +141,7 @@ def query_reception_data(start_date, end_date, libelle_prod, USE_DATABASE=USE_DA
             AND libelle_prod = ?
             ORDER BY date_recep
             LIMIT 100
-        ''', (start_date, end_date, libelle_prod))
+        ''', (start_date, end_date, labelle_prod))
 
         sample_rows = rows_cursor.fetchall()
         
@@ -159,6 +165,89 @@ def query_reception_data(start_date, end_date, libelle_prod, USE_DATABASE=USE_DA
             ]
         }
 
+def query_silo(start_date, end_date, silo_dest, USE_DATABASE=USE_DATABASE):
+
+    if not USE_DATABASE:
+        # Fallback to pandas
+        df_filtered = df_data[
+            (df_data['DATE_RECEP'] >= start_date) &
+            (df_data['DATE_RECEP'] <= end_date) &
+            (df_data['SILO_DEST'] == silo_dest)
+        ].copy()
+        return df_filtered
+    
+    # Rest of your database code remains the same...
+    with get_db_connection() as conn:
+        # Get aggregated data in one query
+        cursor = conn.execute('''
+            SELECT 
+                SUM(qte) as total_sum,
+                AVG(qte) as mean_val,
+                MIN(qte) as min_val,
+                MAX(qte) as max_val,
+                COUNT(*) as count_val
+            FROM reception
+            WHERE date_recep BETWEEN ? AND ?
+            AND silo_dest = ?
+        ''', (start_date, end_date, silo_dest))
+
+        agg_result = cursor.fetchone()
+
+        aggregates = {
+            'sum': float(agg_result['total_sum']) if agg_result['total_sum'] is not None else 0.0,
+            'mean': float(agg_result['mean_val']) if agg_result['mean_val'] is not None else 0.0,
+            'min': float(agg_result['min_val']) if agg_result['min_val'] is not None else 0.0,
+            'max': float(agg_result['max_val']) if agg_result['max_val'] is not None else 0.0,
+            'count': int(agg_result['count_val']) if agg_result['count_val'] is not None else 0
+        }
+        
+        # Get daily breakdown for ranges if needed
+        daily_cursor = conn.execute('''
+            SELECT 
+                date_recep, libelle_prod,
+                SUM(qte) as daily_total,
+                COUNT(*) as daily_count
+            FROM reception
+            WHERE date_recep BETWEEN ? AND ? 
+            AND silo_dest = ?
+            GROUP BY date_recep
+            ORDER BY date_recep
+        ''', (start_date, end_date, silo_dest))
+
+        daily_results = daily_cursor.fetchall()
+        
+        # Get sample rows (limited)
+        rows_cursor = conn.execute('''
+            SELECT date_recep, libelle_prod, qte, silo_dest
+            FROM reception
+            WHERE date_recep BETWEEN ? AND ?
+            AND silo_dest = ?
+            ORDER BY date_recep
+            LIMIT 100
+        ''', (start_date, end_date, silo_dest))
+
+        sample_rows = rows_cursor.fetchall()
+        
+        return {
+            'aggregates': aggregates,
+            'daily_breakdown': [
+                {
+                    'date': row['date_recep'],
+                    'total': float(row['daily_total']),
+                    'entries': int(row['daily_count'])
+                }
+                for row in daily_results
+            ],
+            'sample_rows': [
+                {
+                    'DATE_RECEP': row['date_recep'],
+                    'LIBELLE_PROD': row['libelle_prod'],
+                    'QTE': float(row['qte']),
+                    'SILO_DEST': row['silo_dest']
+                }
+                for row in sample_rows
+            ]
+        }
 # Initialize data source
 def initialize_data_source(thing="LIBELLE_PROD",USE_DATABASE=USE_DATABASE, PARQUET_FILE=PARQUET_FILE, EXCEL_FILE=EXCEL_FILE, SQLITE_DB=SQLITE_DB):
     if USE_DATABASE:

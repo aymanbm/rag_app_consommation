@@ -14,7 +14,7 @@ const Consommations = (props) => {
             <p className="subtitle">Obtenez des réponses précises à partir de vos données</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="query-form">
+          <form onSubmit={handleSubmit} className="query-form" name="consommation">
             <div className="input-group">
               <input
                 type="text"
