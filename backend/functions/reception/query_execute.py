@@ -84,7 +84,7 @@ async def query_exact_intelligent_reception(q: Question_reception, USE_DATABASE=
     query_start = time.time()
     data_query = None
 
-    data_result = query_reception_data(start_date, end_date, labelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
+    data_result = query_reception_data(start_date, end_date, libelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
 
     query_time = round((time.time() - query_start) * 1000, 2)
     print(f"Database query took: {query_time}ms")
@@ -149,8 +149,8 @@ async def handle_comparison_query(q_text, labelle_prod, silo_dest, temporal_info
     period2 = comparison_periods[1]
     
     # Query data for both periods
-    data1 = query_reception_data(period1['start'], period1['end'], labelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
-    data2 = query_reception_data(period2['start'], period2['end'], labelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
+    data1 = query_reception_data(period1['start'], period1['end'], libelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
+    data2 = query_reception_data(period2['start'], period2['end'], libelle_prod=labelle_prod, silo_dest=silo_dest, USE_DATABASE=USE_DATABASE)
 
     # Process both datasets
     aggregates1, _, _ = process_data_result(data1, USE_DATABASE, 'range')

@@ -1,12 +1,10 @@
-import cx_Oracle
-import oracledb
 import oracledb
 import logging
-
+from contextlib import contextmanager
 
 logging.basicConfig(level=logging.INFO)
 
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 oracle_host: str = "10.4.100.63"
 oracle_port: int = 1521
@@ -15,40 +13,46 @@ oracle_username: str = "SAHEL"
 oracle_password: str = "*Sah12191"
 oracle_schema: str = "ALFSAHELP"
 
-def get_connection(self):
-        """Get Oracle database connection with context management"""
-        connection = None
-        try:
-            # Construct connection string with credentials
-            dsn = f"{self.settings.oracle_host}:{self.settings.oracle_port}/{self.settings.oracle_service_name}"
-            
-            # Try cx_Oracle first, then fallback to oracledb
-            try:
-                connection = cx_Oracle.connect(
-                    user=self.settings.oracle_username,
-                    password=self.settings.oracle_password,
-                    dsn=dsn
-                )
-                logger.info("Connected using cx_Oracle")
-            except Exception as cx_error:
-                logger.warning(f"cx_Oracle connection failed: {cx_error}")
-                try:
-                    connection = oracledb.connect(
-                        user=self.settings.oracle_username,
-                        password=self.settings.oracle_password,
-                        dsn=dsn
-                    )
-                    logger.info("Connected using oracledb")
-                except Exception as oracle_error:
-                    logger.error(f"Both Oracle drivers failed: {oracle_error}")
-                    raise
-            
-            yield connection
-            
-        except Exception as e:
-            logger.error(f"Oracle connection error: {e}")
-            raise
-        finally:
-            if connection:
-                connection.close()
-                logger.info("Oracle connection closed")
+@contextmanager
+def get_connection():
+    """Get Oracle database connection with context management"""
+    connection = None
+    try:
+        # Construct connection string with credentials
+        dsn = f"{oracle_host}:{oracle_port}/{oracle_service_name}"
+        
+        # Use oracledb (modern Oracle driver)
+        connection = oracledb.connect(
+            user=oracle_username,
+            password=oracle_password,
+            dsn=dsn
+        )
+        logger.info("Connected using oracledb")
+        
+        yield connection
+        
+    except Exception as e:
+        logger.error(f"Oracle connection error: {e}")
+        raise
+    finally:
+        if connection:
+            connection.close()
+            logger.info("Oracle connection closed")
+
+# Example usage:
+with get_connection() as conn:
+    cursor = conn.cursor()
+    # Your database operations here
+    print("Connected to Oracle database")
+    cursor.execute(
+        "SELECT * FROM (SELECT ca.NUMERO, cde.POIDS_RECEPTIONNE, cde.SILO_DESTINATION, "
+        "cde.PRODUIT, cde.LIBELLE_PRODUIT, pr.FAMILLE, cde.DATE_RECEPTION "
+        "FROM ALFSAHELP.cdeachat ca "
+        "INNER JOIN ALFSAHELP.cdeachligne cde ON cde.numero = ca.numero "
+        "INNER JOIN ALFSAHELP.produit pr ON pr.code = cde.produit) "
+        "WHERE ROWNUM <= 1"
+    )
+    rows = cursor.fetchall()
+    for row in rows:
+        print(row)
+    cursor.close()
